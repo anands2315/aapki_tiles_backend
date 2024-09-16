@@ -8,7 +8,6 @@ categoryRouter.post('/api/add-company-profiles', async (req, res) => {
     try {
         let data = req.body;
 
-        // Ensure data is an array
         if (!Array.isArray(data)) {
             data = [data];
         }
@@ -66,16 +65,38 @@ categoryRouter.post('/api/add-company-profiles', async (req, res) => {
     }
 });
 
-// GET /api/company-profiles - Read all profiles
 categoryRouter.get('/api/company-profiles', async (req, res) => {
     try {
-        const profiles = await CompanyProfile.find().populate('category');
-        res.status(200).json(profiles);
+        const { page = 1, limit = 12 } = req.query;
+        const skip = (page - 1) * limit;
+
+        // Count total number of profiles
+        const totalProfiles = await CompanyProfile.countDocuments();
+
+        // Fetch profiles with pagination
+        const profiles = await CompanyProfile.find()
+            .populate('category')
+            .skip(skip)
+            .limit(Number(limit))
+            .lean()
+            .exec();
+
+        // Calculate total pages
+        const totalPages = Math.ceil(totalProfiles / limit);
+
+        // Send response with profiles and pagination info
+        res.status(200).json({
+            profiles,
+            totalPages,
+            currentPage: Number(page)
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'An error occurred while fetching company profiles', details: error.message });
     }
 });
+
+
 
 // GET /api/company-profiles/:id - Read a single profile by ID
 categoryRouter.get('/api/company-profiles/:id', async (req, res) => {
