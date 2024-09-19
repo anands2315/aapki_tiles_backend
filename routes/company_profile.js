@@ -1,10 +1,10 @@
 const express = require('express');
-const categoryRouter = express.Router();
+const companyProfileRouter = express.Router();
 const CompanyProfile = require('../models/company_profile');
 const Category = require('../models/category');
 
 
-categoryRouter.post('/api/add-company-profiles', async (req, res) => {
+companyProfileRouter.post('/api/add-company-profiles', async (req, res) => {
     try {
         let data = req.body;
 
@@ -13,7 +13,7 @@ categoryRouter.post('/api/add-company-profiles', async (req, res) => {
         }
 
         const profilePromises = data.map(async (item) => {
-            // Look up the category
+
             let categoryId = null;
             if (item.category) {
                 const category = await Category.findOne({ category: item.category });
@@ -22,7 +22,6 @@ categoryRouter.post('/api/add-company-profiles', async (req, res) => {
                 }
             }
 
-            // Extract and clean size data
             const sizes = [item.size1, item.size2, item.size3].filter(size => size && size !== 'null');
 
             // Create contact persons
@@ -65,30 +64,40 @@ categoryRouter.post('/api/add-company-profiles', async (req, res) => {
     }
 });
 
-categoryRouter.get('/api/company-profiles', async (req, res) => {
+companyProfileRouter.get('/api/company-profiles', async (req, res) => {
     try {
-        const { page = 1, limit = 12 } = req.query;
+        const { categoryName, page = 1, limit = 12 } = req.query;
         const skip = (page - 1) * limit;
 
-        // Count total number of profiles
-        const totalProfiles = await CompanyProfile.countDocuments();
+        let filter = {};
 
-        // Fetch profiles with pagination
-        const profiles = await CompanyProfile.find()
+        if (categoryName) {
+            // Find the category by name
+            const category = await Category.findOne({ category: categoryName });
+            if (!category) {
+                return res.status(404).json({ message: 'Category not found' });
+            }
+            // Filter by category ID
+            filter.category = category._id;
+        }
+
+        // Count total number of profiles based on the filter (category or not)
+        const totalProfiles = await CompanyProfile.countDocuments(filter);
+
+        // Fetch company profiles with pagination based on the filter
+        const profiles = await CompanyProfile.find(filter)
             .populate('category')
             .skip(skip)
             .limit(Number(limit))
             .lean()
             .exec();
 
-        // Calculate total pages
         const totalPages = Math.ceil(totalProfiles / limit);
 
-        // Send response with profiles and pagination info
         res.status(200).json({
             profiles,
             totalPages,
-            currentPage: Number(page)
+            currentPage: Number(page),
         });
     } catch (error) {
         console.error(error);
@@ -98,8 +107,9 @@ categoryRouter.get('/api/company-profiles', async (req, res) => {
 
 
 
+
 // GET /api/company-profiles/:id - Read a single profile by ID
-categoryRouter.get('/api/company-profiles/:id', async (req, res) => {
+companyProfileRouter.get('/api/company-profiles/:id', async (req, res) => {
     try {
         const profile = await CompanyProfile.findById(req.params.id).populate('category');
         if (!profile) {
@@ -113,7 +123,7 @@ categoryRouter.get('/api/company-profiles/:id', async (req, res) => {
 });
 
 // PUT /api/company-profiles/:id - Update a profile by ID
-categoryRouter.put('/api/company-profiles/:id', async (req, res) => {
+companyProfileRouter.put('/api/company-profiles/:id', async (req, res) => {
     try {
         const updateData = req.body;
 
@@ -162,7 +172,7 @@ categoryRouter.put('/api/company-profiles/:id', async (req, res) => {
 });
 
 // DELETE /api/company-profiles/:id - Delete a profile by ID
-categoryRouter.delete('/api/company-profiles/:id', async (req, res) => {
+companyProfileRouter.delete('/api/company-profiles/:id', async (req, res) => {
     try {
         const result = await CompanyProfile.findByIdAndDelete(req.params.id);
         if (!result) {
@@ -175,4 +185,4 @@ categoryRouter.delete('/api/company-profiles/:id', async (req, res) => {
     }
 });
 
-module.exports = categoryRouter;
+module.exports = companyProfileRouter;

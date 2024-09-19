@@ -1,7 +1,10 @@
 const express = require('express');
 const Category = require('../models/category');
 const categoryRouter = express.Router();
+const multer = require('multer');
 
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
 
 // CREATE: Add categories and subcategories
 categoryRouter.post('/api/add-categories', async (req, res) => {
@@ -16,20 +19,19 @@ categoryRouter.post('/api/add-categories', async (req, res) => {
         const categoriesMap = new Map();
 
         data.forEach((item) => {
-            const category = item['category'];
+            const category = item['category1'];
 
             // Skip if category is null or 'null'
             if (category && category !== 'null') {
-                // Initialize subcategories array
+
                 const subcategories = [];
 
-                // Check and add valid subcategories
-                const subcategory1 = item['subcategories1'];
+                const subcategory1 = item['subCategory1'];
                 if (subcategory1 && subcategory1 !== 'null') {
                     subcategories.push(subcategory1);
                 }
 
-                const subcategory2 = item['subcategories2'];
+                const subcategory2 = item['subCategory2'];
                 if (subcategory2 && subcategory2 !== 'null') {
                     subcategories.push(subcategory2);
                 }
@@ -70,49 +72,90 @@ categoryRouter.post('/api/add-categories', async (req, res) => {
     }
 });
 
-// READ: Get all categories
-categoryRouter.get('/categories', async (req, res) => {
+categoryRouter.get('/api/categories', async (req, res) => {
     try {
         const categories = await Category.find();
-        res.status(200).json(categories);
+
+        const categoriesWithBase64Image = categories.map(category => {
+            if (category.image && category.image.data) {
+                return {
+                    ...category._doc,
+                    image: {
+                        data: category.image.data.toString('base64'),
+                        contentType: category.image.contentType,
+                    }
+                };
+            }
+            return category;
+        });
+
+        res.status(200).json(categoriesWithBase64Image);
     } catch (error) {
         res.status(500).json({ error: 'An error occurred while fetching categories' });
     }
 });
 
-// READ: Get a single category by ID
-categoryRouter.get('/categories/:id', async (req, res) => {
+categoryRouter.get('/api/categories/:id', async (req, res) => {
     try {
         const category = await Category.findById(req.params.id);
+
         if (!category) {
             return res.status(404).json({ error: 'Category not found' });
         }
-        res.status(200).json(category);
+
+        let categoryWithBase64Image = category;
+
+        if (category.image && category.image.data) {
+            categoryWithBase64Image = {
+                ...category._doc,
+                image: {
+                    data: category.image.data.toString('base64'),
+                    contentType: category.image.contentType,
+                }
+            };
+        }
+
+        res.status(200).json(categoryWithBase64Image);
     } catch (error) {
         res.status(500).json({ error: 'An error occurred while fetching the category' });
     }
 });
 
+
 // UPDATE: Update category and its subcategories by ID
-categoryRouter.put('/categories/:id', async (req, res) => {
+categoryRouter.put('/api/categories/:id', upload.single('image'), async (req, res) => {
     try {
         const { category, subcategories } = req.body;
+
+        // Build the update object
+        const updateData = { category, subcategories };
+
+        // If there's an image in the request, add it to the update object
+        if (req.file) {
+            updateData.image = {
+                data: req.file.buffer,
+                contentType: req.file.mimetype,
+            };
+        }
+
         const updatedCategory = await Category.findByIdAndUpdate(
             req.params.id,
-            { category, subcategories },
+            { $set: updateData },
             { new: true } // Returns the updated document
         );
+
         if (!updatedCategory) {
             return res.status(404).json({ error: 'Category not found' });
         }
+
         res.status(200).json(updatedCategory);
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while updating the category' });
+        res.status(500).json({ error: 'An error occurred while updating the category', details: error.message });
     }
 });
 
 // DELETE: Remove a category by ID
-categoryRouter.delete('/categories/:id', async (req, res) => {
+categoryRouter.delete('/api/categories/:id', async (req, res) => {
     try {
         const deletedCategory = await Category.findByIdAndDelete(req.params.id);
         if (!deletedCategory) {
