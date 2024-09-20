@@ -9,7 +9,7 @@ const userRouter = express.Router();
 
 userRouter.post('/api/signUp', async (req, res) => {
     try {
-        const { name, email, password, phoneNo, userType = 'user' } = req.body;
+        const { name, email, password, phoneNo, userType = 'user', package } = req.body;
 
         const otpRecord = await Otp.findOne({ email });
         if (!otpRecord || !otpRecord.otpVerified) {
@@ -29,6 +29,7 @@ userRouter.post('/api/signUp', async (req, res) => {
             name,
             phoneNo,
             userType,
+            package  // Include package here
         });
 
         user = await user.save();
@@ -205,7 +206,7 @@ userRouter.get("/api/user", async (req, res) => {
 userRouter.put('/api/updateUser/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, email, phoneNo, userType } = req.body;
+        const { name, email, phoneNo, userType, package } = req.body;
 
         const user = await User.findById(id);
         if (!user) {
@@ -216,6 +217,7 @@ userRouter.put('/api/updateUser/:id', async (req, res) => {
         if (email !== undefined) user.email = email;
         if (phoneNo !== undefined) user.phoneNo = phoneNo;
         if (userType !== undefined) user.userType = userType;
+        if (package !== undefined) user.package = package; // Update package
 
         await user.save();
 
@@ -224,6 +226,7 @@ userRouter.put('/api/updateUser/:id', async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
+
 
 userRouter.delete("/api/deleteUser/:id", async (req, res) => {
     try {
