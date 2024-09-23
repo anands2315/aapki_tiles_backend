@@ -66,22 +66,27 @@ companyProfileRouter.post('/api/add-company-profiles', async (req, res) => {
 
 companyProfileRouter.get('/api/company-profiles', async (req, res) => {
     try {
-        const { categoryName, page = 1, limit = 12 } = req.query;
+        const { categoryName, businessName, page = 1, limit = 12 } = req.query;
         const skip = (page - 1) * limit;
 
+        // Initialize the filter object
         let filter = {};
 
+        // Filter by category if categoryName is provided
         if (categoryName) {
-            // Find the category by name
             const category = await Category.findOne({ category: categoryName });
             if (!category) {
                 return res.status(404).json({ message: 'Category not found' });
             }
-            // Filter by category ID
             filter.category = category._id;
         }
 
-        // Count total number of profiles based on the filter (category or not)
+        // Filter by businessName if provided (partial match with case insensitivity)
+        if (businessName) {
+            filter.businessName = { $regex: new RegExp(businessName, 'i') }; // case-insensitive match
+        }
+
+        // Count the total number of profiles based on the filter (category, businessName, or both)
         const totalProfiles = await CompanyProfile.countDocuments(filter);
 
         // Fetch company profiles with pagination based on the filter
@@ -94,6 +99,7 @@ companyProfileRouter.get('/api/company-profiles', async (req, res) => {
 
         const totalPages = Math.ceil(totalProfiles / limit);
 
+        // Return the filtered profiles with pagination info
         res.status(200).json({
             profiles,
             totalPages,
@@ -104,7 +110,6 @@ companyProfileRouter.get('/api/company-profiles', async (req, res) => {
         res.status(500).json({ error: 'An error occurred while fetching company profiles', details: error.message });
     }
 });
-
 
 
 
