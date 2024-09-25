@@ -1,36 +1,32 @@
 const express = require('express');
 const dealerRouter = express.Router();
 const Dealer = require('../models/dealer');
-const multer = require('multer');
 const Category = require('../models/category');
 
-
-// Configure multer to handle image uploads in memory as Buffer
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
 
 dealerRouter.post('/api/add-dealers', async (req, res) => {
     try {
         let data = req.body;
+        console.log(data);
 
         if (!Array.isArray(data)) {
             data = [data];
         }
 
-        // Process each dealer in the incoming request
+        
         const dealerPromises = data.map(async (item) => {
-            // Fetch only category1 from the Category collection
-            const category = await Category.findOne({ category: item.category1 }).exec();
+            
+            const category = await Category.findOne({ category: item.category }).exec();
 
-            // If category1 is invalid or missing, throw an error
+            
             if (!category) {
-                throw new Error('Valid category1 is required');
+                throw new Error('Valid category is required');
             }
 
             let logo = item.logo !== 'null' ? item.logo : undefined;
             let banner = item.banner !== 'null' ? item.banner : undefined;
 
-            // Prepare contact persons data
+            
             const contactPersons = [];
             for (let i = 1; i <= 3; i++) {
                 if (item[`personName${i}`] && item[`personName${i}`] !== 'null') {
@@ -44,13 +40,13 @@ dealerRouter.post('/api/add-dealers', async (req, res) => {
                 }
             }
 
-            // Handle isIndian (store false if "null" or null)
+            
             const isIndian = item.isIndian === "null" || item.isIndian === null || item.isIndian === undefined ? false : item.isIndian;
 
-            // Handle isVerified (convert 0 or null to false, 1 to true)
+            
             const isVerified = item.isVerified === 1 ? true : false;
 
-            // Create the dealer record with the provided data
+            
             return Dealer.create({
                 logo: logo,
                 banner: banner,
@@ -77,13 +73,14 @@ dealerRouter.post('/api/add-dealers', async (req, res) => {
                 isVerified: isVerified,
                 about: item.about,
                 contactPersons,
-                category: category._id,  // Use the category1's ID
-                subCategories: [item.subCategory1, item.subCategory2, item.subCategory3].filter(sub => sub && sub !== 'null'),
+                category: category._id,  
                 locationUrl: item.locationUrl,
+                size: item.size // <-- Add this line to include the size field
             });
+            
         });
 
-        // Await the creation of all dealer records
+        
         await Promise.all(dealerPromises);
         res.status(200).json({ message: 'Dealers saved successfully' });
     } catch (error) {
@@ -92,65 +89,67 @@ dealerRouter.post('/api/add-dealers', async (req, res) => {
     }
 });
 
-
-// GET /api/dealers - Fetch paginated list of dealers with image paths
 dealerRouter.get('/api/dealers', async (req, res) => {
     try {
-        const { page = 1, limit = 12, categoryName } = req.query;
+        
+        const { page = 1, limit = 12, categoryName, businessName, isIndian } = req.query;
         const skip = (page - 1) * limit;
 
-        // Check if a category name filter is provided
-        let categoryFilter = {};
+        let filter = {};
+
+        // Filter by category name
         if (categoryName) {
             const category = await Category.findOne({ category: categoryName }).exec();
 
-            // If category not found, return empty response
             if (!category) {
                 return res.status(404).json({
                     message: `No dealers found for category: ${categoryName}`,
                     dealers: [],
                     totalPages: 0,
-                    currentPage: Number(page)
+                    currentPage: Number(page),
                 });
             }
 
-            // Filter dealers by category ID
-            categoryFilter = { category: category._id };
+            filter.category = category._id;
         }
 
-        // Count total number of dealers based on category
-        const totalDealers = await Dealer.countDocuments(categoryFilter);
+        // Filter by business name (case-insensitive)
+        if (businessName) {
+            filter.businessName = { $regex: new RegExp(businessName, 'i') }; 
+        }
 
-        // Fetch dealers with pagination and category filter
-        const dealers = await Dealer.find(categoryFilter)
+        // Filter by Indian dealers
+        if (isIndian) {
+            filter.isIndian = isIndian === 'true'; // Convert query parameter to boolean
+        }
+
+        const totalDealers = await Dealer.countDocuments(filter);
+
+        const dealers = await Dealer.find(filter)
             .skip(skip)
             .limit(Number(limit))
-            .populate('category', 'category')
+            .populate('category')
             .lean()
             .exec();
 
-        // You no longer need to add image paths with base64 encoding as `logo` and `banner` are already strings
+        // Add logo and banner paths
         dealers.forEach(dealer => {
-            dealer.logoPath = dealer.logo || null; // Keep as is or null if empty
-            dealer.bannerPath = dealer.banner || null; // Keep as is or null if empty
+            dealer.logoPath = dealer.logo || null;
+            dealer.bannerPath = dealer.banner || null;
         });
 
-        // Calculate total pages
         const totalPages = Math.ceil(totalDealers / limit);
 
-        // Send response with dealers and pagination info
         res.status(200).json({
             dealers,
             totalPages,
-            currentPage: Number(page)
+            currentPage: Number(page),
         });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'An error occurred while fetching dealers', details: error.message });
     }
 });
-
-
 
 
 module.exports = dealerRouter;

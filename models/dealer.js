@@ -87,9 +87,7 @@ const dealerSchema = new mongoose.Schema({
         ref: 'Category',
         required: true
     },
-    subCategories: {
-        type: [String]
-    },
+   
     size: {
         type: [String],
         default: ['0'] 

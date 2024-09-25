@@ -1,6 +1,8 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require("cors");
+const compression = require('compression');
+
 // const multer = require('multer');
 // const path = require('path');
 // const fs = require('fs');
@@ -19,6 +21,13 @@ const DB = "mongodb+srv://anand:%40aapki%23Tiles23@cluster0.ko3mo.mongodb.net/?r
 // MIDDLEWARE
 app.use(cors());
 app.use(express.json());
+app.use(compression({
+    level: 6,
+    threshold: 1024,
+    filter: (req, res) => !req.headers['x-no-compression']
+}));
+
+
 app.use(userRouter);
 app.use(companyProfileRouter);
 app.use(categoryRouter);

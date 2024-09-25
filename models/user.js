@@ -37,11 +37,14 @@ const userSchema = mongoose.Schema({
         required: true,
         default: Date.now,
     },
-
     userType: {
         type: String,
         enum: ['user', 'admin'],
         default: 'user'
+    },
+    package: {
+        type:Number,
+        required:true,
     },
     resetPasswordToken: {
         type: String,
