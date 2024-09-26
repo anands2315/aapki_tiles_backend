@@ -9,7 +9,7 @@ const userRouter = express.Router();
 
 userRouter.post('/api/signUp', async (req, res) => {
     try {
-        const { name, email, password, phoneNo, userType = 'user', package } = req.body;
+        const { name, email, password, phoneNo, userType = 'user', package, gstin } = req.body; // Include gstin
 
         const otpRecord = await Otp.findOne({ email });
         if (!otpRecord || !otpRecord.otpVerified) {
@@ -29,7 +29,9 @@ userRouter.post('/api/signUp', async (req, res) => {
             name,
             phoneNo,
             userType,
-            package  // Include package here
+            package,
+            gstin,  // Include gstin here
+            isVerified: false // Default to false during sign up
         });
 
         user = await user.save();
@@ -41,7 +43,6 @@ userRouter.post('/api/signUp', async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
-
 userRouter.post('/api/sendOtp', async (req, res) => {
     try {
         const { email } = req.body;
@@ -203,10 +204,11 @@ userRouter.get("/api/user", async (req, res) => {
     }
 });
 
+
 userRouter.put('/api/updateUser/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, email, phoneNo, userType, package } = req.body;
+        const { name, email, phoneNo, userType, package, gstin, isVerified } = req.body; // Include gstin and isVerified
 
         const user = await User.findById(id);
         if (!user) {
@@ -217,7 +219,9 @@ userRouter.put('/api/updateUser/:id', async (req, res) => {
         if (email !== undefined) user.email = email;
         if (phoneNo !== undefined) user.phoneNo = phoneNo;
         if (userType !== undefined) user.userType = userType;
-        if (package !== undefined) user.package = package; // Update package
+        if (package !== undefined) user.package = package; 
+        if (gstin !== undefined) user.gstin = gstin; 
+        if (isVerified !== undefined) user.isVerified = isVerified; 
 
         await user.save();
 

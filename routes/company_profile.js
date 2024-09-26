@@ -4,6 +4,7 @@ const CompanyProfile = require('../models/company_profile');
 const Category = require('../models/category');
 
 
+
 companyProfileRouter.post('/api/add-company-profiles', async (req, res) => {
     try {
         let data = req.body;
