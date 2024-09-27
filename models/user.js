@@ -56,14 +56,7 @@ const userSchema = mongoose.Schema({
     },
     gstin: {
         type: String,
-        required: true,
-        // validate: {
-        //     validator: (value) => {
-        //         const re = /^([0-9]{2})([A-Z]{4})([0-9]{4})([A-Z]{1})([Z]{1})([0-9A]{1})$/; 
-        //         return re.test(value);
-        //     },
-        //     message: "Please enter a valid GSTIN number",
-        // }
+        // required: true,
     },
     isVerified: {
         type: Boolean,
@@ -72,6 +65,10 @@ const userSchema = mongoose.Schema({
     certificate: {
         data: Buffer,
         contentType: String
+    },
+    companyId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'CompanyProfile', 
     }
 });
 
