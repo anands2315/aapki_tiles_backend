@@ -45,8 +45,16 @@ userRouter.post('/api/signUp', upload.single('certificate'), async (req, res) =>
         user = await user.save();
         await Otp.deleteOne({ email });
 
-        res.json(user);
+        // Return user data with the certificate in Base64 format
+        const userResponse = {
+            ...user._doc,
+            certificate: {
+                data: user.certificate.data.toString('base64'),
+                contentType: user.certificate.contentType,
+            }
+        };
 
+        res.json(userResponse);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -147,11 +155,22 @@ userRouter.post('/api/signin', async (req, res) => {
 
         const token = jwt.sign({ id: user._id }, "passwordKey");
 
-        res.json({ token, ...user._doc });
+        // Prepare response with the certificate in Base64 format
+        const userResponse = {
+            token,
+            ...user._doc,
+            certificate: user.certificate ? {
+                data: user.certificate.data.toString('base64'),
+                contentType: user.certificate.contentType,
+            } : null // Handle case where certificate might not be present
+        };
+
+        res.json(userResponse);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
+
 
 userRouter.post('/api/forgetPassword', async (req, res) => {
     try {
@@ -208,23 +227,40 @@ userRouter.post('/api/resetPassword/:resetToken', async (req, res) => {
 userRouter.get("/api/user", async (req, res) => {
     try {
         const users = await User.find({});
-        res.json(users);
+        
+        const usersWithCertificates = users.map(user => {
+            const userObj = user.toObject();
+            if (user.certificate && user.certificate.data) {
+                return {
+                    ...userObj,
+                    certificate: {
+                        data: user.certificate.data.toString('base64'),
+                        contentType: user.certificate.contentType,
+                    }
+                };
+            }
+            return userObj;
+        });
+
+        res.json(usersWithCertificates);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
 
 
-userRouter.put('/api/updateUser/:id', async (req, res) => {
+
+userRouter.put('/api/updateUser/:id', upload.single('certificate'), async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, email, phoneNo, userType, package, gstin, isVerified } = req.body; 
+        const { name, email, phoneNo, userType, package, gstin, isVerified } = req.body;
 
         const user = await User.findById(id);
         if (!user) {
             return res.status(404).json({ msg: "User not found!" });
         }
 
+        // Update user fields
         if (name !== undefined) user.name = name;
         if (email !== undefined) user.email = email;
         if (phoneNo !== undefined) user.phoneNo = phoneNo;
@@ -233,13 +269,31 @@ userRouter.put('/api/updateUser/:id', async (req, res) => {
         if (gstin !== undefined) user.gstin = gstin; 
         if (isVerified !== undefined) user.isVerified = isVerified; 
 
+        // Update certificate if provided
+        if (req.file) {
+            user.certificate = {
+                data: req.file.buffer,
+                contentType: req.file.mimetype
+            };
+        }
+
         await user.save();
 
-        res.json(user);
+        // Return updated user with the certificate in Base64 format
+        const updatedUserResponse = {
+            ...user._doc,
+            certificate: user.certificate ? {
+                data: user.certificate.data.toString('base64'),
+                contentType: user.certificate.contentType,
+            } : null // Handle case where certificate might not be present
+        };
+
+        res.json(updatedUserResponse);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
+
 
 
 userRouter.delete("/api/deleteUser/:id", async (req, res) => {

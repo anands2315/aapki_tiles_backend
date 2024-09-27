@@ -89,7 +89,7 @@ categoryRouter.get('/api/categories', async (req, res) => {
             return category;
         });
 
-        res.status(200).json(categories);
+        res.status(200).json(categoriesWithBase64Image);
     } catch (error) {
         res.status(500).json({ error: 'An error occurred while fetching categories' });
     }

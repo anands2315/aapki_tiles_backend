@@ -71,7 +71,8 @@ const userSchema = mongoose.Schema({
     },
     certificate: {
         data: Buffer,
-        contentType: String    }
+        contentType: String
+    }
 });
 
 const User = mongoose.model("User", userSchema);
