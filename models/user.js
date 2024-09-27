@@ -59,7 +59,7 @@ const userSchema = mongoose.Schema({
         required: true,
         // validate: {
         //     validator: (value) => {
-        //         const re = /^([0-9]{2})([A-Z]{4})([0-9]{4})([A-Z]{1})([Z]{1})([0-9A]{1})$/; // Example GSTIN format
+        //         const re = /^([0-9]{2})([A-Z]{4})([0-9]{4})([A-Z]{1})([Z]{1})([0-9A]{1})$/; 
         //         return re.test(value);
         //     },
         //     message: "Please enter a valid GSTIN number",
@@ -67,8 +67,11 @@ const userSchema = mongoose.Schema({
     },
     isVerified: {
         type: Boolean,
-        default: false 
-    }
+        default: false
+    },
+    certificate: {
+        data: Buffer,
+        contentType: String    }
 });
 
 const User = mongoose.model("User", userSchema);

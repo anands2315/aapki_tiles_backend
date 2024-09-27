@@ -6,10 +6,14 @@ const jwt = require('jsonwebtoken');
 const Otp = require('../models/otp');
 const { sendOtpMail, sendResetPasswordMail } = require('../utils/mailer');
 const userRouter = express.Router();
+const multer = require('multer');
 
-userRouter.post('/api/signUp', async (req, res) => {
+const storage = multer.memoryStorage(); 
+const upload = multer({ storage: storage });
+
+userRouter.post('/api/signUp', upload.single('certificate'), async (req, res) => {
     try {
-        const { name, email, password, phoneNo, userType = 'user', package, gstin } = req.body; // Include gstin
+        const { name, email, password, phoneNo, userType = 'user', package, gstin } = req.body;
 
         const otpRecord = await Otp.findOne({ email });
         if (!otpRecord || !otpRecord.otpVerified) {
@@ -30,8 +34,12 @@ userRouter.post('/api/signUp', async (req, res) => {
             phoneNo,
             userType,
             package,
-            gstin,  // Include gstin here
-            isVerified: false // Default to false during sign up
+            gstin,
+            isVerified: false,
+            certificate: {
+                data: req.file.buffer, 
+                contentType: req.file.mimetype 
+            }
         });
 
         user = await user.save();
@@ -43,6 +51,8 @@ userRouter.post('/api/signUp', async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
+
+
 userRouter.post('/api/sendOtp', async (req, res) => {
     try {
         const { email } = req.body;
@@ -208,7 +218,7 @@ userRouter.get("/api/user", async (req, res) => {
 userRouter.put('/api/updateUser/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, email, phoneNo, userType, package, gstin, isVerified } = req.body; // Include gstin and isVerified
+        const { name, email, phoneNo, userType, package, gstin, isVerified } = req.body; 
 
         const user = await User.findById(id);
         if (!user) {
