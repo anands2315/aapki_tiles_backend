@@ -13,12 +13,9 @@ dealerRouter.post('/api/add-dealers', async (req, res) => {
             data = [data];
         }
 
-        
         const dealerPromises = data.map(async (item) => {
-            
             const category = await Category.findOne({ category: item.category }).exec();
 
-            
             if (!category) {
                 throw new Error('Valid category is required');
             }
@@ -26,7 +23,6 @@ dealerRouter.post('/api/add-dealers', async (req, res) => {
             let logo = item.logo !== 'null' ? item.logo : undefined;
             let banner = item.banner !== 'null' ? item.banner : undefined;
 
-            
             const contactPersons = [];
             for (let i = 1; i <= 3; i++) {
                 if (item[`personName${i}`] && item[`personName${i}`] !== 'null') {
@@ -40,14 +36,11 @@ dealerRouter.post('/api/add-dealers', async (req, res) => {
                 }
             }
 
-            
             const isIndian = item.isIndian === "null" || item.isIndian === null || item.isIndian === undefined ? false : item.isIndian;
-
-            
             const isVerified = item.isVerified === 1 ? true : false;
 
-            
-            return Dealer.create({
+            // Create dealer entry
+            const dealer = await Dealer.create({
                 logo: logo,
                 banner: banner,
                 businessName: item.businessName,
@@ -73,21 +66,23 @@ dealerRouter.post('/api/add-dealers', async (req, res) => {
                 isVerified: isVerified,
                 about: item.about,
                 contactPersons,
-                category: category._id,  
+                category: category._id,
                 locationUrl: item.locationUrl,
-                size: item.size // <-- Add this line to include the size field
+                size: item.size,
             });
-            
+
+            // Return the dealer with the required format
+            return dealer; // This will contain the created dealer object
         });
 
-        
-        await Promise.all(dealerPromises);
-        res.status(200).json({ message: 'Dealers saved successfully' });
+        const dealers = await Promise.all(dealerPromises);
+        res.status(200).json({ message: 'Dealers saved successfully', dealers });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'An error occurred while saving dealers', details: error.message });
     }
 });
+
 
 dealerRouter.get('/api/dealers', async (req, res) => {
     try {
