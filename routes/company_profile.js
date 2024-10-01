@@ -4,7 +4,7 @@ const multer = require('multer');
 const CompanyProfile = require('../models/company_profile');
 const Category = require('../models/category');
 
-const storage = multer.memoryStorage(); // Store images in memory as Buffer
+const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
 
@@ -24,7 +24,6 @@ companyProfileRouter.post('/api/add-company-profiles', upload.fields([{ name: 'l
                 throw new Error('Valid category is required');
             }
 
-            // Prepare logo and banner
             const logo = req.files['logo'] ? {
                 data: req.files['logo'][0].buffer,
                 contentType: req.files['logo'][0].mimetype
@@ -35,19 +34,16 @@ companyProfileRouter.post('/api/add-company-profiles', upload.fields([{ name: 'l
                 contentType: req.files['banner'][0].mimetype
             } : undefined;
 
-            // Parse contact persons if it's a string
             let contactPersons = [];
             if (typeof item.contactPersons === 'string') {
-                contactPersons = JSON.parse(item.contactPersons);
+                contactPersons = JSON.parse(item.contactPersons).map(person => JSON.parse(person));
             }
 
-            // Parse social media data if it's a string
             let socialMedia = {};
             if (typeof item.socialMedia === 'string') {
                 socialMedia = JSON.parse(item.socialMedia);
             }
 
-            // Parse size array if it's a string
             let size = [];
             if (typeof item.size === 'string') {
                 size = JSON.parse(item.size);
@@ -71,16 +67,15 @@ companyProfileRouter.post('/api/add-company-profiles', upload.fields([{ name: 'l
                 companyWhatsapp: item.companyWhatsapp ? item.companyWhatsapp.toString() : undefined,
                 email: item.email,
                 website: item.website,
-                socialMedia: socialMedia, // Store parsed social media
-                contactPersons: contactPersons.length > 0 ? contactPersons : undefined, // Only include if not empty
-                category: category._id, // Set the category ID
-                size: size, // Store parsed size array
+                socialMedia: socialMedia, 
+                contactPersons: contactPersons.length > 0 ? contactPersons : undefined, 
+                category: category._id, 
+                size: size, 
                 isIndian: isIndian,
                 isVerified: isVerified,
             });
 
-            // Return the created company profile object
-            return companyProfile; // This will contain the created company profile object
+            return companyProfile; 
         });
 
         const companyProfiles = await Promise.all(profilePromises);
@@ -90,7 +85,6 @@ companyProfileRouter.post('/api/add-company-profiles', upload.fields([{ name: 'l
         res.status(500).json({ error: 'An error occurred while saving company profiles', details: error.message });
     }
 });
-
 
 
 // GET /api/company-profiles - Get all company profiles
@@ -142,6 +136,7 @@ companyProfileRouter.get('/api/company-profiles', async (req, res) => {
             } : undefined,
         }));
 
+        console.log(profilesWithBase64Images);
         // Return the filtered profiles with pagination info
         res.status(200).json({
             profiles: profilesWithBase64Images,
@@ -168,7 +163,7 @@ companyProfileRouter.get('/api/company-profiles/:id', async (req, res) => {
         let categoryWithBase64Image;
         if (profile.category) {
             categoryWithBase64Image = {
-                ...profile.category._doc, // Use _doc to get the raw MongoDB document of category
+                ...profile.category._doc,
                 image: profile.category.image && profile.category.image.data ? {
                     data: profile.category.image.data.toString('base64'),
                     contentType: profile.category.image.contentType
@@ -199,7 +194,6 @@ companyProfileRouter.get('/api/company-profiles/:id', async (req, res) => {
 });
 
 
-// PUT /api/company-profiles/:id - Update a profile by ID
 companyProfileRouter.put('/api/company-profiles/:id', upload.fields([{ name: 'logo' }, { name: 'banner' }]), async (req, res) => {
     try {
         const updateData = req.body;
@@ -210,12 +204,14 @@ companyProfileRouter.put('/api/company-profiles/:id', upload.fields([{ name: 'lo
             return res.status(404).json({ message: 'Company profile not found' });
         }
 
-        // Look up the category ID if a category name is provided
-        let categoryId = null;
+        // Check for category validity if provided
+        let categoryId = existingProfile.category; // Keep existing category if not provided
         if (updateData.category) {
             const category = await Category.findOne({ category: updateData.category });
             if (category) {
                 categoryId = category._id;
+            } else {
+                return res.status(400).json({ message: 'Valid category is required' });
             }
         }
 
@@ -223,30 +219,39 @@ companyProfileRouter.put('/api/company-profiles/:id', upload.fields([{ name: 'lo
         const logo = req.files['logo'] ? {
             data: req.files['logo'][0].buffer,
             contentType: req.files['logo'][0].mimetype
-        } : undefined;
+        } : existingProfile.logo; // Keep existing logo if not provided
 
         const banner = req.files['banner'] ? {
             data: req.files['banner'][0].buffer,
             contentType: req.files['banner'][0].mimetype
-        } : undefined;
+        } : existingProfile.banner; // Keep existing banner if not provided
 
-        // Extract and clean size data
-        const sizes = [updateData.size1, updateData.size2, updateData.size3].filter(size => size && size !== 'null');
-
-        // Create contact persons array
-        const contactPersons = [];
-        for (let i = 1; i <= 5; i++) {
-            if (updateData[`contactPersonsName${i}`] && updateData[`contactPersonsName${i}`] !== 'null') {
-                contactPersons.push({
-                    name: updateData[`contactPersonsName${i}`],
-                    designation: updateData[`designation${i}`] !== 'null' ? updateData[`designation${i}`] : undefined,
-                    contact: updateData[`contact${i}`] !== 'null' ? updateData[`contact${i}`] : undefined,
-                    whatsapp: updateData[`whatsapp${i}`] !== 'null' ? updateData[`whatsapp${i}`] : undefined,
-                    email: updateData[`email${i}`] !== 'null' ? updateData[`email${i}`] : undefined,
-                });
-            }
+        // Parse contact persons if provided
+        let contactPersons = existingProfile.contactPersons; // Keep existing contactPersons if not provided
+        if (typeof updateData.contactPersons === 'string') {
+            contactPersons = JSON.parse(updateData.contactPersons).map(person => JSON.parse(person));
         }
+
+        // Parse social media if provided
+        let socialMedia = existingProfile.socialMedia; // Keep existing socialMedia if not provided
+        if (typeof updateData.socialMedia === 'string') {
+            socialMedia = JSON.parse(updateData.socialMedia);
+        }
+
+        // Parse size if provided
+        let size = existingProfile.size; // Keep existing size if not provided
+        if (typeof updateData.size === 'string') {
+            size = JSON.parse(updateData.size);
+        }
+
+        // Boolean checks for isIndian and isVerified
+        const isIndian = updateData.isIndian !== undefined ? updateData.isIndian === 'true' : existingProfile.isIndian;
+        const isVerified = updateData.isVerified !== undefined ? updateData.isVerified === 'true' : existingProfile.isVerified;
+
+        // Update fields
         const updateFields = {
+            logo: logo,
+            banner: banner,
             businessName: updateData.businessName || existingProfile.businessName,
             brandName: updateData.brandName || existingProfile.brandName,
             address: updateData.address || existingProfile.address,
@@ -258,30 +263,31 @@ companyProfileRouter.put('/api/company-profiles/:id', upload.fields([{ name: 'lo
             companyWhatsapp: updateData.companyWhatsapp || existingProfile.companyWhatsapp,
             email: updateData.email || existingProfile.email,
             website: updateData.website || existingProfile.website,
-            socialMedia: updateData.socialMedia || existingProfile.socialMedia,
+            socialMedia: socialMedia,
             year: updateData.year || existingProfile.year,
             latitude: updateData.latitude || existingProfile.latitude,
             longitude: updateData.longitude || existingProfile.longitude,
-            isIndian: updateData.isIndian !== undefined ? updateData.isIndian : existingProfile.isIndian,
-            isVerified: updateData.isVerified !== undefined ? updateData.isVerified : existingProfile.isVerified,
+            isIndian: isIndian,
+            isVerified: isVerified,
             about: updateData.about || existingProfile.about,
             locationUrl: updateData.locationUrl || existingProfile.locationUrl,
-            category: categoryId || existingProfile.category,
-            size: sizes.length > 0 ? sizes : existingProfile.size,
-            contactPersons: contactPersons.length > 0 ? contactPersons : existingProfile.contactPersons,
-            logo: logo || existingProfile.logo,
-            banner: banner || existingProfile.banner,
+            category: categoryId,
+            size: size,
+            contactPersons: contactPersons,
         };
 
-        const profile = await CompanyProfile.findByIdAndUpdate(req.params.id, updateFields, { new: true }).populate('category');
+        // Update the profile
+        const updatedProfile = await CompanyProfile.findByIdAndUpdate(req.params.id, updateFields, { new: true }).populate('category');
 
         // Return the updated profile
-        res.status(200).json(profile);
+        res.status(200).json({ message: 'Company profile updated successfully', updatedProfile });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'An error occurred while updating the company profile', details: error.message });
     }
 });
+
+
 
 
 // DELETE /api/company-profiles/:id - Delete a profile by ID
