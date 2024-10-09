@@ -62,10 +62,7 @@ const userSchema = mongoose.Schema({
         type: Boolean,
         default: false
     },
-    package: {
-        type: Boolean,
-        default: false
-    },
+    
     certificate: {
         data: Buffer,
         contentType: String

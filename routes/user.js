@@ -13,7 +13,7 @@ const upload = multer({ storage: storage });
 
 userRouter.post('/api/signUp', upload.single('certificate'), async (req, res) => {
     try {
-        const { name, email, password, phoneNo, userType = 'user', package, gstin } = req.body;
+        const { name, email, password, phoneNo, userType = 'user', package = 0, gstin } = req.body;
 
         const otpRecord = await Otp.findOne({ email });
         if (!otpRecord || !otpRecord.otpVerified) {
