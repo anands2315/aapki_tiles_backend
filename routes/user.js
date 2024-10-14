@@ -8,12 +8,12 @@ const { sendOtpMail, sendResetPasswordMail } = require('../utils/mailer');
 const userRouter = express.Router();
 const multer = require('multer');
 
-const storage = multer.memoryStorage(); 
+const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
 userRouter.post('/api/signUp', upload.single('certificate'), async (req, res) => {
     try {
-        const { name, email, password, phoneNo, userType = 'user', package = 0, gstin } = req.body;
+        const { name, email, password, phoneNo, userType = 'user', package = 0, gstin, type = 0 } = req.body;
 
         const otpRecord = await Otp.findOne({ email });
         if (!otpRecord || !otpRecord.otpVerified) {
@@ -37,9 +37,10 @@ userRouter.post('/api/signUp', upload.single('certificate'), async (req, res) =>
             gstin,
             isVerified: false,
             certificate: {
-                data: req.file.buffer, 
-                contentType: req.file.mimetype 
-            }
+                data: req.file.buffer,
+                contentType: req.file.mimetype
+            },
+            type
         });
 
         user = await user.save();
@@ -227,7 +228,7 @@ userRouter.post('/api/resetPassword/:resetToken', async (req, res) => {
 userRouter.get("/api/user", async (req, res) => {
     try {
         const users = await User.find({});
-        
+
         const usersWithCertificates = users.map(user => {
             const userObj = user.toObject();
             if (user.certificate && user.certificate.data) {
@@ -252,7 +253,7 @@ userRouter.get("/api/user", async (req, res) => {
 userRouter.put('/api/updateUser/:id', upload.single('certificate'), async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, email, phoneNo, userType, package, gstin, isVerified, companyId } = req.body; 
+        const { name, email, phoneNo, userType, package, gstin, isVerified, companyId } = req.body;
 
         const user = await User.findById(id);
         if (!user) {
@@ -264,7 +265,7 @@ userRouter.put('/api/updateUser/:id', upload.single('certificate'), async (req, 
         if (email !== undefined) user.email = email;
         if (phoneNo !== undefined) user.phoneNo = phoneNo;
         if (userType !== undefined) user.userType = userType;
-        if (package !== undefined) user.package = package; 
+        if (package !== undefined) user.package = package;
         if (gstin !== undefined) user.gstin = gstin; // Update gstin only if provided
         if (isVerified !== undefined) user.isVerified = isVerified;
         if (companyId !== undefined) user.companyId = companyId; // Update companyId if provided
@@ -291,7 +292,7 @@ userRouter.put('/api/updateUser/:id', upload.single('certificate'), async (req, 
         res.json(updatedUserResponse);
     } catch (e) {
         res.status(500).json({ error: e.message });
-        console.log(e.message );
+        console.log(e.message);
     }
 });
 

@@ -46,6 +46,10 @@ const userSchema = mongoose.Schema({
         type: Number,
         required: true,
     },
+    type: {
+        type: Number,
+        required: true,
+    },
     resetPasswordToken: {
         type: String,
         required: false

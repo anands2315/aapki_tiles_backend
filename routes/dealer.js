@@ -15,14 +15,14 @@ dealerRouter.post('/api/add-dealers', async (req, res) => {
 
         const dealerPromises = data.map(async (item) => {
             const category = await Category.findOne({ category: item.category }).exec();
-
+        
             if (!category) {
                 throw new Error('Valid category is required');
             }
-
+        
             let logo = item.logo !== 'null' ? item.logo : undefined;
             let banner = item.banner !== 'null' ? item.banner : undefined;
-
+        
             const contactPersons = [];
             for (let i = 1; i <= 3; i++) {
                 if (item[`personName${i}`] && item[`personName${i}`] !== 'null') {
@@ -35,10 +35,14 @@ dealerRouter.post('/api/add-dealers', async (req, res) => {
                     });
                 }
             }
-
-            const isIndian = item.isIndian === "null" || item.isIndian === null || item.isIndian === undefined ? false : item.isIndian;
+        
+            // const isIndian = item.isIndian === "null" || item.isIndian === null || item.isIndian === undefined ? false : item.isIndian;
             const isVerified = item.isVerified === 1 ? true : false;
-
+        
+            // Handle latitude and longitude
+            const latitude = (item.latitude && item.latitude !== 'null') ? Number(item.latitude) : undefined;
+            const longitude = (item.longitude && item.longitude !== 'null') ? Number(item.longitude) : undefined;
+        
             // Create dealer entry
             const dealer = await Dealer.create({
                 logo: logo,
@@ -60,9 +64,9 @@ dealerRouter.post('/api/add-dealers', async (req, res) => {
                     youtube: item.youtube,
                 },
                 year: item.year,
-                latitude: item.latitude !== "null" ? Number(item.latitude) : undefined,
-                longitude: item.longitude !== "null" ? Number(item.longitude) : undefined,
-                isIndian: isIndian,
+                latitude: latitude,  
+                longitude: longitude,  
+                isIndian: false,
                 isVerified: isVerified,
                 about: item.about,
                 contactPersons,
@@ -70,10 +74,10 @@ dealerRouter.post('/api/add-dealers', async (req, res) => {
                 locationUrl: item.locationUrl,
                 size: item.size,
             });
-
-            // Return the dealer with the required format
-            return dealer; // This will contain the created dealer object
+        
+            return dealer; 
         });
+        
 
         const dealers = await Promise.all(dealerPromises);
         res.status(200).json({ message: 'Dealers saved successfully', dealers });

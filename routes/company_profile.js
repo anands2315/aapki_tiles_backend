@@ -8,54 +8,124 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
 
-companyProfileRouter.post('/api/add-company-profiles', upload.fields([{ name: 'logo' }, { name: 'banner' }]), async (req, res) => {
+// companyProfileRouter.post('/api/add-company-profiles', upload.fields([{ name: 'logo' }, { name: 'banner' }]), async (req, res) => {
+//     try {
+//         let data = req.body;
+//         console.log(data);
+
+//         if (!Array.isArray(data)) {
+//             data = [data];
+//         }
+
+//         const profilePromises = data.map(async (item) => {
+//             // Check for category validity
+//             const category = await Category.findOne({ category: item.category }).exec();
+//             if (!category) {
+//                 throw new Error('Valid category is required');
+//             }
+
+//             const logo = req.files['logo'] ? {
+//                 data: req.files['logo'][0].buffer,
+//                 contentType: req.files['logo'][0].mimetype
+//             } : undefined;
+
+//             const banner = req.files['banner'] ? {
+//                 data: req.files['banner'][0].buffer,
+//                 contentType: req.files['banner'][0].mimetype
+//             } : undefined;
+
+//             let contactPersons = [];
+//             if (typeof item.contactPersons === 'string') {
+//                 contactPersons = JSON.parse(item.contactPersons).map(person => JSON.parse(person));
+//             }
+
+//             let socialMedia = {};
+//             if (typeof item.socialMedia === 'string') {
+//                 socialMedia = JSON.parse(item.socialMedia);
+//             }
+
+//             let size = [];
+//             if (typeof item.size === 'string') {
+//                 size = JSON.parse(item.size);
+//             }
+
+//             const isIndian = item.isIndian === "null" || item.isIndian === null || item.isIndian === undefined ? false : item.isIndian === 'true';
+//             const isVerified = item.isVerified === "true";
+
+//             // Create company profile entry
+//             const companyProfile = await CompanyProfile.create({
+//                 logo: logo,
+//                 banner: banner,
+//                 businessName: item.businessName,
+//                 brandName: item.brandName,
+//                 address: item.address,
+//                 city: item.city,
+//                 district: item.district,
+//                 state: item.state,
+//                 country: item.country,
+//                 companyContact: item.companyContact.toString(),
+//                 companyWhatsapp: item.companyWhatsapp ? item.companyWhatsapp.toString() : undefined,
+//                 email: item.email,
+//                 website: item.website,
+//                 socialMedia: socialMedia, 
+//                 contactPersons: contactPersons.length > 0 ? contactPersons : undefined, 
+//                 category: category._id, 
+//                 size: size, 
+//                 isIndian: isIndian,
+//                 isVerified: isVerified,
+//             });
+
+//             return companyProfile; 
+//         });
+
+//         const companyProfiles = await Promise.all(profilePromises);
+//         res.status(200).json({ message: 'Company profiles saved successfully', companyProfiles });
+//     } catch (error) {
+//         console.error(error);
+//         res.status(500).json({ error: 'An error occurred while saving company profiles', details: error.message });
+//     }
+// });
+
+
+// GET /api/company-profiles - Get all company profiles
+
+companyProfileRouter.post('/api/add-company-profiles', async (req, res) => {
     try {
         let data = req.body;
-        console.log(data);
 
+        // Ensure data is an array
         if (!Array.isArray(data)) {
             data = [data];
         }
 
         const profilePromises = data.map(async (item) => {
-            // Check for category validity
-            const category = await Category.findOne({ category: item.category }).exec();
-            if (!category) {
-                throw new Error('Valid category is required');
+            // Look up the category
+            let categoryId = null;
+            if (item.category) {
+                const category = await Category.findOne({ category: item.category });
+                if (category) {
+                    categoryId = category._id;
+                }
             }
 
-            const logo = req.files['logo'] ? {
-                data: req.files['logo'][0].buffer,
-                contentType: req.files['logo'][0].mimetype
-            } : undefined;
+            // Extract and clean size data
+            const sizes = [item.size1, item.size2, item.size3].filter(size => size && size !== 'null');
 
-            const banner = req.files['banner'] ? {
-                data: req.files['banner'][0].buffer,
-                contentType: req.files['banner'][0].mimetype
-            } : undefined;
-
-            let contactPersons = [];
-            if (typeof item.contactPersons === 'string') {
-                contactPersons = JSON.parse(item.contactPersons).map(person => JSON.parse(person));
+            // Create contact persons
+            const contactPersons = [];
+            for (let i = 1; i <= 5; i++) {
+                if (item[`contactPersonsName${i}`] && item[`contactPersonsName${i}`] !== 'null') {
+                    contactPersons.push({
+                        name: item[`contactPersonsName${i}`],
+                        designation: item[`designation${i}`] !== 'null' ? item[`designation${i}`] : undefined,
+                        contact: item[`contact${i}`] !== 'null' ? item[`contact${i}`] : undefined,
+                        whatsapp: item[`whatsapp${i}`] !== 'null' ? item[`whatsapp${i}`] : undefined,
+                        email: item[`email${i}`] !== 'null' ? item[`email${i}`] : undefined,
+                    });
+                }
             }
 
-            let socialMedia = {};
-            if (typeof item.socialMedia === 'string') {
-                socialMedia = JSON.parse(item.socialMedia);
-            }
-
-            let size = [];
-            if (typeof item.size === 'string') {
-                size = JSON.parse(item.size);
-            }
-
-            const isIndian = item.isIndian === "null" || item.isIndian === null || item.isIndian === undefined ? false : item.isIndian === 'true';
-            const isVerified = item.isVerified === "true";
-
-            // Create company profile entry
-            const companyProfile = await CompanyProfile.create({
-                logo: logo,
-                banner: banner,
+            return CompanyProfile.create({
                 businessName: item.businessName,
                 brandName: item.brandName,
                 address: item.address,
@@ -67,27 +137,20 @@ companyProfileRouter.post('/api/add-company-profiles', upload.fields([{ name: 'l
                 companyWhatsapp: item.companyWhatsapp ? item.companyWhatsapp.toString() : undefined,
                 email: item.email,
                 website: item.website,
-                socialMedia: socialMedia, 
-                contactPersons: contactPersons.length > 0 ? contactPersons : undefined, 
-                category: category._id, 
-                size: size, 
-                isIndian: isIndian,
-                isVerified: isVerified,
+                contactPersons,
+                category: categoryId,
+                size: sizes,
             });
-
-            return companyProfile; 
         });
 
-        const companyProfiles = await Promise.all(profilePromises);
-        res.status(200).json({ message: 'Company profiles saved successfully', companyProfiles });
+        await Promise.all(profilePromises);
+        res.status(200).json({ message: 'Company profiles saved successfully' });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'An error occurred while saving company profiles', details: error.message });
     }
 });
 
-
-// GET /api/company-profiles - Get all company profiles
 companyProfileRouter.get('/api/company-profiles', async (req, res) => {
     try {
         const { categoryName, businessName, page = 1, limit = 12 } = req.query;
