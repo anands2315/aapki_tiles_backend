@@ -213,6 +213,98 @@ companyProfileRouter.get('/api/company-profiles', async (req, res) => {
 });
 
 
+
+// filter data 
+companyProfileRouter.get('/api/search-company-profiles', async (req, res) => {
+    try {
+        const { 
+            categoryName, 
+            businessName, 
+            brandName, 
+            city, 
+            email, 
+            companyContact,
+            page = 1, 
+            limit = 12 
+        } = req.query;
+        const skip = (page - 1) * limit;
+
+        // Initialize the filter object
+        let filter = {};
+
+        // Filter by category if categoryName is provided
+        if (categoryName) {
+            const category = await Category.findOne({ category: categoryName });
+            if (!category) {
+                return res.status(404).json({ message: 'Category not found' });
+            }
+            filter.category = category._id;
+        }
+
+        // Filter by businessName (partial match with case insensitivity)
+        if (businessName) {
+            filter.businessName = { $regex: new RegExp(businessName, 'i') };
+        }
+
+        // Filter by brandName (partial match with case insensitivity)
+        if (brandName) {
+            filter.brandName = { $regex: new RegExp(brandName, 'i') };
+        }
+
+        // Filter by city (partial match with case insensitivity)
+        if (city) {
+            filter.city = { $regex: new RegExp(city, 'i') };
+        }
+
+        // Filter by email (exact match)
+        if (email) {
+            filter.email ={ $regex: new RegExp(email, 'i') };
+        }
+
+        // Filter by companyContact (exact match)
+        if (companyContact) {
+            filter.companyContact = companyContact;
+        }
+
+        // Count the total number of profiles based on the filter
+        const totalProfiles = await CompanyProfile.countDocuments(filter);
+
+        // Fetch company profiles with pagination
+        const profiles = await CompanyProfile.find(filter)
+            .populate('category')
+            .skip(skip)
+            .limit(Number(limit))
+            .lean()
+            .exec();
+
+        const totalPages = Math.ceil(totalProfiles / limit);
+
+        // Convert logo and banner to Base64 if they exist
+        const profilesWithBase64Images = profiles.map(profile => ({
+            ...profile,
+            logo: profile.logo && profile.logo.data ? {
+                data: profile.logo.data.toString('base64'),
+                contentType: profile.logo.contentType
+            } : undefined,
+            banner: profile.banner && profile.banner.data ? {
+                data: profile.banner.data.toString('base64'),
+                contentType: profile.banner.contentType
+            } : undefined,
+        }));
+
+        // Return the filtered profiles with pagination info
+        res.status(200).json({
+            profiles: profilesWithBase64Images,
+            totalPages,
+            currentPage: Number(page),
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while fetching company profiles', details: error.message });
+    }
+});
+
+
 // GET /api/company-profiles/:id - Read a single profile by ID
 companyProfileRouter.get('/api/company-profiles/:id', async (req, res) => {
     try {
