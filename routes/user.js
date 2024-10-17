@@ -73,7 +73,7 @@ userRouter.post('/api/addUsers', async (req, res) => {
             password,
             phoneNo,
             userType = 'user',
-            package = 0,
+            package = 1,
             type = 0,
             gstin,
             addedBy,
@@ -136,6 +136,35 @@ userRouter.post('/api/addUsers', async (req, res) => {
 });
 
 
+userRouter.patch('/api/updateAddedUser/:userId', async (req, res) => {
+    try {
+        console.log(req.body);
+        const { userId } = req.params; // Get user ID from URL params
+        const { name, phoneNo, email } = req.body; // Get fields to update from request body
+
+        // Find the existing user by ID
+        const existingUser = await User.findById(userId);
+        if (!existingUser) {
+            return res.status(404).json({ msg: "User not found." });
+        }
+
+        // Update only specific fields if they are not null or empty
+        const updatedData = {
+            name: name || existingUser.name,  // Retain previous value if null/empty
+            phoneNo: phoneNo || existingUser.phoneNo,  // Retain previous value if null/empty
+            email: email || existingUser.email  // Retain previous value if null/empty
+        };
+
+        // Update the user in the database
+        await User.findByIdAndUpdate(userId, updatedData, { new: true });
+
+        // Return a success message
+        res.json({ msg: 'User updated successfully' });
+    } catch (e) {
+        console.error(e); // Log the error for debugging
+        res.status(500).json({ error: e.message });
+    }
+});
 
 userRouter.get("/api/addUser", auth, async (req, res) => {
     try {
