@@ -119,7 +119,7 @@ userRouter.post('/api/addUsers', async (req, res) => {
         await Otp.deleteOne({ email });
 
         // Return the created user object in the response
-        res.status(201).json({ msg: 'User Created' });
+        res.json({ msg: 'User Account Created.' });
     } catch (e) {
         console.error(e); // Log the error for debugging
         res.status(500).json({ error: e.message });
