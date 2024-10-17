@@ -39,7 +39,7 @@ const userSchema = mongoose.Schema({
     },
     userType: {
         type: String,
-        enum: ['user', 'admin'],
+        enum: ['user', 'admin', 'added'],
         default: 'user'
     },
     package: {
@@ -74,7 +74,15 @@ const userSchema = mongoose.Schema({
     companyId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'CompanyProfile', 
-    }
+    },
+    addedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User', 
+    },
+    addedUsers: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    }]
 });
 
 const User = mongoose.model("User", userSchema);
