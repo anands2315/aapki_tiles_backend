@@ -76,7 +76,7 @@ userRouter.post('/api/addUsers', async (req, res) => {
             package = 0,
             type = 0,
             gstin,
-            addedBy
+            addedBy,
         } = req.body;
 
         // Check if email is verified
@@ -94,6 +94,13 @@ userRouter.post('/api/addUsers', async (req, res) => {
         // Hash the password
         const hashedPassword = await bcryptjs.hash(password, 8);
 
+        const adminUser = await User.findById(addedBy);
+        if (!adminUser) {
+            return res.status(404).json({ msg: "Admin user not found." });
+        }
+        const certificate = adminUser.certificate; // Assuming the admin user has a 'certificate' field
+        const companyId = adminUser.companyId; // Assuming the admin user has a 'certificate' field
+
         // Create a new user
         let user = new User({
             email,
@@ -104,8 +111,10 @@ userRouter.post('/api/addUsers', async (req, res) => {
             package,
             type,
             gstin,
-            isVerified: false,
+            certificate,
+            isVerified: true,
             addedBy: addedBy,
+            companyId:companyId
         });
 
         // Save the user to the database
@@ -119,12 +128,13 @@ userRouter.post('/api/addUsers', async (req, res) => {
         await Otp.deleteOne({ email });
 
         // Return the created user object in the response
-        res.json({ msg: 'User Account Created.' });
+        res.json({ msg: 'User Created' });
     } catch (e) {
         console.error(e); // Log the error for debugging
         res.status(500).json({ error: e.message });
     }
 });
+
 
 
 userRouter.get("/api/addUser", auth, async (req, res) => {
