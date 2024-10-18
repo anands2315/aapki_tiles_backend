@@ -178,8 +178,7 @@ userRouter.delete('/api/deleteAddedUser/:addedBy', auth, async (req, res) => {
     try {
         const { addedBy } = req.params;
         const { userId: mainUserId } = req.body;
-        console.log(`mainUserId: ${mainUserId}, addedBy: ${addedBy}`); 
-        
+       
         const deletedUser = await User.findByIdAndDelete(addedBy);
 
         if (!deletedUser) {
