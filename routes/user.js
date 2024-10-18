@@ -66,8 +66,7 @@ userRouter.post('/api/signUp', upload.single('certificate'), async (req, res) =>
 
 userRouter.post('/api/addUsers', async (req, res) => {
     try {
-        console.log(req.body);
-        const {
+       const {
             name,
             email,
             password,
@@ -138,7 +137,6 @@ userRouter.post('/api/addUsers', async (req, res) => {
 
 userRouter.patch('/api/updateAddedUser/:userId', async (req, res) => {
     try {
-        console.log(req.body);
         const { userId } = req.params; // Get user ID from URL params
         const { name, phoneNo, email } = req.body; // Get fields to update from request body
 
