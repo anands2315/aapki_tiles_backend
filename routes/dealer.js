@@ -7,7 +7,7 @@ const Category = require('../models/category');
 dealerRouter.post('/api/add-dealers', async (req, res) => {
     try {
         let data = req.body;
-        console.log(data);
+        // console.log(data);
 
         if (!Array.isArray(data)) {
             data = [data];

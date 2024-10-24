@@ -199,14 +199,14 @@ companyProfileRouter.get('/api/company-profiles', async (req, res) => {
             } : undefined,
         }));
 
-        console.log(profilesWithBase64Images);
+        // console.log(profilesWithBase64Images);
         // Return the filtered profiles with pagination info
         res.status(200).json({
             profiles: profilesWithBase64Images,
             totalPages,
             currentPage: Number(page),
         });
-    } catch (error) {
+       } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'An error occurred while fetching company profiles', details: error.message });
     }
