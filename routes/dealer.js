@@ -88,6 +88,49 @@ dealerRouter.post('/api/add-dealers', async (req, res) => {
 });
 
 
+dealerRouter.get('/api/dealer-profile/:id', async (req, res) => {
+    try {
+        // Fetch the company profile by ID and populate the category
+        const profile = await Dealer.findById(req.params.id).populate('category');
+        if (!profile) {
+            return res.status(404).json({ message: 'Company profile not found' });
+        }
+
+        // Ensure category image is converted to Base64 if it exists
+        let categoryWithBase64Image;
+        if (profile.category) {
+            categoryWithBase64Image = {
+                ...profile.category._doc,
+                image: profile.category.image && profile.category.image.data ? {
+                    data: profile.category.image.data.toString('base64'),
+                    contentType: profile.category.image.contentType
+                } : undefined,
+            };
+        }
+
+        // Convert logo and banner to Base64 if they exist
+        const profileWithBase64Images = {
+            ...profile._doc, // Use _doc to get the raw MongoDB document
+            logo: profile.logo && profile.logo.data ? {
+                data: profile.logo.data.toString('base64'),
+                contentType: profile.logo.contentType
+            } : undefined,
+            banner: profile.banner && profile.banner.data ? {
+                data: profile.banner.data.toString('base64'),
+                contentType: profile.banner.contentType
+            } : undefined,
+            category: categoryWithBase64Image // Replace category with the modified version
+        };
+
+        // Send the modified profile object as a response
+        res.status(200).json(profileWithBase64Images);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while fetching the company profile', details: error.message });
+    }
+});
+
+
 dealerRouter.get('/api/dealers', async (req, res) => {
     try {
         
