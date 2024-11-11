@@ -7,6 +7,7 @@ const Otp = require('../models/otp');
 const { sendOtpMail, sendResetPasswordMail } = require('../utils/mailer');
 const userRouter = express.Router();
 const multer = require('multer');
+const auth = require('../middleware/auth');
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
@@ -56,6 +57,137 @@ userRouter.post('/api/signUp', upload.single('certificate'), async (req, res) =>
         };
 
         res.json(userResponse);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+
+
+userRouter.post('/api/addUsers', async (req, res) => {
+    try {
+       const {
+            name,
+            email,
+            password,
+            phoneNo,
+            userType = 'user',
+            package = 1,
+            type = 0,
+            gstin,
+            addedBy,
+        } = req.body;
+
+        // Check if email is verified
+        const otpRecord = await Otp.findOne({ email });
+        if (!otpRecord || !otpRecord.otpVerified) {
+            return res.status(400).json({ msg: "Email not verified. Please verify your email before signing up." });
+        }
+
+        // Check if user already exists
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({ msg: "User with the same email already exists!" });
+        }
+
+        // Hash the password
+        const hashedPassword = await bcryptjs.hash(password, 8);
+
+        const adminUser = await User.findById(addedBy);
+        if (!adminUser) {
+            return res.status(404).json({ msg: "Admin user not found." });
+        }
+        const certificate = adminUser.certificate; // Assuming the admin user has a 'certificate' field
+        const companyId = adminUser.companyId; // Assuming the admin user has a 'certificate' field
+
+        // Create a new user
+        let user = new User({
+            email,
+            password: hashedPassword,
+            name,
+            phoneNo,
+            userType,
+            package,
+            type,
+            gstin,
+            certificate,
+            isVerified: true,
+            addedBy: addedBy,
+            companyId:companyId
+        });
+
+        // Save the user to the database
+        user = await user.save();
+
+        // Update the main user with the added user's ID
+        await User.findByIdAndUpdate(addedBy, { $push: { addedUsers: user._id } });
+
+
+        // Optionally delete the OTP record
+        await Otp.deleteOne({ email });
+
+        // Return the created user object in the response
+        res.json({ msg: 'User Created' });
+    } catch (e) {
+        console.error(e); // Log the error for debugging
+        res.status(500).json({ error: e.message });
+    }
+});
+
+
+userRouter.patch('/api/updateAddedUser/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params; // Get user ID from URL params
+        const { name, phoneNo, email } = req.body; // Get fields to update from request body
+
+        // Find the existing user by ID
+        const existingUser = await User.findById(userId);
+        if (!existingUser) {
+            return res.status(404).json({ msg: "User not found." });
+        }
+
+        // Update only specific fields if they are not null or empty
+        const updatedData = {
+            name: name || existingUser.name,  // Retain previous value if null/empty
+            phoneNo: phoneNo || existingUser.phoneNo,  // Retain previous value if null/empty
+            email: email || existingUser.email  // Retain previous value if null/empty
+        };
+
+        // Update the user in the database
+        await User.findByIdAndUpdate(userId, updatedData, { new: true });
+
+        // Return a success message
+        res.json({ msg: 'User updated successfully' });
+    } catch (e) {
+        console.error(e); // Log the error for debugging
+        res.status(500).json({ error: e.message });
+    }
+});
+
+userRouter.get("/api/addUser", auth, async (req, res) => {
+    try {
+        const addedBy = req.query.addedBy;
+        const addedUsers = await User.find({ addedBy: addedBy });
+        res.json(addedUsers);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+userRouter.delete('/api/deleteAddedUser/:addedBy', auth, async (req, res) => {
+    try {
+        const { addedBy } = req.params;
+        const { userId: mainUserId } = req.body;
+       
+        const deletedUser = await User.findByIdAndDelete(addedBy);
+
+        if (!deletedUser) {
+            return res.status(404).json({ msg: "User not found!" });
+        }
+
+        await User.findByIdAndUpdate(mainUserId, { $pull: { addedUsers: addedBy } });
+
+        res.json({ msg: "User deleted successfully!" });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
