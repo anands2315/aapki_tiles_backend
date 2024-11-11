@@ -23,18 +23,13 @@ dealerRouter.post('/api/add-dealers', async (req, res) => {
             let logo = item.logo !== 'null' ? item.logo : undefined;
             let banner = item.banner !== 'null' ? item.banner : undefined;
         
-            const contactPersons = [];
-            for (let i = 1; i <= 3; i++) {
-                if (item[`personName${i}`] && item[`personName${i}`] !== 'null') {
-                    contactPersons.push({
-                        name: item[`personName${i}`],
-                        designation: item[`personPost${i}`] !== 'null' ? item[`personPost${i}`] : undefined,
-                        contact: item[`personContact${i}`] !== 'null' ? item[`personContact${i}`].toString() : undefined,
-                        whatsapp: item[`personWhatsapp${i}`] !== 'null' ? item[`personWhatsapp${i}`].toString() : undefined,
-                        email: item[`personEmail${i}`] !== 'null' ? item[`personEmail${i}`] : undefined,
-                    });
-                }
-            }
+            const contactPersons = item.contactPersons?.map(person => ({
+                name: person.name || undefined,
+                designation: person.designation || undefined,
+                contact: person.contact ? person.contact.toString() : undefined,
+                whatsapp: person.whatsapp ? person.whatsapp.toString() : undefined,
+                email: person.email || undefined
+            })) || [];
         
             // const isIndian = item.isIndian === "null" || item.isIndian === null || item.isIndian === undefined ? false : item.isIndian;
             const isVerified = item.isVerified === 1 ? true : false;
