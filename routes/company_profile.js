@@ -292,7 +292,6 @@ companyProfileRouter.get('/api/search-company-profiles', async (req, res) => {
             } : undefined,
         }));
 
-        // Return the filtered profiles with pagination info
         res.status(200).json({
             profiles: profilesWithBase64Images,
             totalPages,

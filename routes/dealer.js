@@ -188,5 +188,66 @@ dealerRouter.get('/api/dealers', async (req, res) => {
     }
 });
 
+// filter data 
+dealerRouter.get('/api/search-dealers', async (req, res) => {
+    try {
+        const { 
+            categoryName, 
+            businessName, 
+            city, 
+            email, 
+            contact,
+            page = 1, 
+            limit = 12 
+        } = req.query;
+        const skip = (page - 1) * limit;
+
+        let filter = {};
+
+        if (categoryName) {
+            const category = await Category.findOne({ category: categoryName });
+            if (!category) {
+                return res.status(404).json({ message: 'Category not found' });
+            }
+            filter.category = category._id;
+        }
+
+        if (businessName) {
+            filter.businessName = { $regex: new RegExp(businessName, 'i') };
+        }
+
+        if (city) {
+            filter.city = { $regex: new RegExp(city, 'i') };
+        }
+
+        if (email) {
+            filter.email = { $regex: new RegExp(email, 'i') };
+        }
+
+        if (contact) {
+            filter.contact = contact;
+        }
+
+        const totalDealers = await Dealer.countDocuments(filter);
+
+        const dealers = await Dealer.find(filter)
+            .populate('category')
+            .skip(skip)
+            .limit(Number(limit))
+            .lean()
+            .exec();
+
+        const totalPages = Math.ceil(totalDealers / limit);
+
+        res.status(200).json({
+            dealers: dealers,
+            totalPages,
+            currentPage: Number(page),
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while fetching dealers', details: error.message });
+    }
+});
 
 module.exports = dealerRouter;
