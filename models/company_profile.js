@@ -2,12 +2,11 @@ const mongoose = require('mongoose');
 
 const companyProfileSchema = new mongoose.Schema({
     logo: {
-        data: Buffer,
-        contentType: String,
+       type:String,
     },
     banner: {
-        data: Buffer,
-        contentType: String,
+        type:String,
+
     },
     businessName: {
         type: String,
@@ -89,20 +88,22 @@ const companyProfileSchema = new mongoose.Schema({
     },
     category: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Category' 
+        ref: 'Category' ,
+        required: true
+
     },
     size: [String] 
 }, {
     timestamps: true,
 });
 
-companyProfileSchema.virtual('logoPath').get(function () {
-    return this.logo ? `data:${this.logo.contentType};base64,${this.logo.data.toString('base64')}` : null;
-});
+// companyProfileSchema.virtual('logoPath').get(function () {
+//     return this.logo ? `data:${this.logo.contentType};base64,${this.logo.data.toString('base64')}` : null;
+// });
 
-companyProfileSchema.virtual('bannerPath').get(function () {
-    return this.banner ? `data:${this.banner.contentType};base64,${this.banner.data.toString('base64')}` : null;
-});
+// companyProfileSchema.virtual('bannerPath').get(function () {
+//     return this.banner ? `data:${this.banner.contentType};base64,${this.banner.data.toString('base64')}` : null;
+// });
 
 const CompanyProfile = mongoose.model('CompanyProfile', companyProfileSchema);
 
